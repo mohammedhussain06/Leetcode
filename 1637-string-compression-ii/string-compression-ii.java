@@ -1,62 +1,41 @@
-import java.util.Arrays;
-
 class Solution {
-    // 4D array for memoization: [index][k][lastChar][lastCharCount]
-    // String length <= 100, k <= 100, 26 lowercase letters + 1 empty state, count max 100
-    private int[][][][] memo;
+    private int[][] dp;
 
     public int getLengthOfOptimalCompression(String s, int k) {
         int n = s.length();
-        // lastChar ranges from 0 to 26 (26 represents an empty/dummy character state)
-        // lastCharCount caps at 100 (or n)
-        memo = new int[n][k + 1][27][101];
-        
-        // Initialize memoization array with -1 (unvisited)
-        for (int[][][] d3 : memo) {
-            for (int[][] d2 : d3) {
-                for (int[] d1 : d2) {
-                    Arrays.fill(d1, -1);
-                }
-            }
+        dp = new int[n][k + 1];
+
+        for (int[] row : dp) {
+            Arrays.fill(row, -1);
         }
-        
-        return dp(s, 0, k, (char) ('a' + 26), 0);
+
+        return solve(s, 0, k);
     }
 
-    private int dp(String s, int i, int k, char lastChar, int lastCharCount) {
-        // Base Case: If we reach the end of the string, no more characters to compress
-        if (i == s.length()) {
-            return 0;
-        }
+    private int solve(String s, int index, int k) {
+        if (k < 0) return Integer.MAX_VALUE;
+        if (index >= s.length() || s.length() - index <= k) return 0;
 
-        int lastCharIdx = lastChar - 'a';
-        // Check if this subproblem has already been computed
-        if (memo[i][k][lastCharIdx][lastCharCount] != -1) {
-            return memo[i][k][lastCharIdx][lastCharCount];
-        }
+        if (dp[index][k] != -1) return dp[index][k];
 
-        // Option 1: Delete the current character (if we still have deletions left)
-        int deleteChar = Integer.MAX_VALUE;
-        if (k > 0) {
-            deleteChar = dp(s, i + 1, k - 1, lastChar, lastCharCount);
-        }
+        int ans = solve(s, index + 1, k - 1);
 
-        // Option 2: Keep the current character
-        int keepChar = 0;
-        if (s.charAt(i) == lastChar) {
-            // It matches the last character, so it extends the current run
-            // We calculate if changing the count expands the string length (e.g., from count 1->2, 9->10, 99->100)
-            int extraLength = 0;
-            if (lastCharCount == 1 || lastCharCount == 9 || lastCharCount == 99) {
-                extraLength = 1;
+        int same = 0, deleted = 0;
+
+        for (int i = index; i < s.length() && deleted <= k; i++) {
+            if (s.charAt(i) == s.charAt(index)) {
+                same++;
+                int len = 1;
+                if (same >= 100) len = 4;
+                else if (same >= 10) len = 3;
+                else if (same >= 2) len = 2;
+
+                ans = Math.min(ans, len + solve(s, i + 1, k - deleted));
+            } else {
+                deleted++;
             }
-            keepChar = extraLength + dp(s, i + 1, k, lastChar, lastCharCount + 1);
-        } else {
-            // It's a new character! It takes 1 slot for the character itself.
-            keepChar = 1 + dp(s, i + 1, k, s.charAt(i), 1);
         }
 
-        // Store and return the minimum length path found
-        return memo[i][k][lastCharIdx][lastCharCount] = Math.min(deleteChar, keepChar);
+        return dp[index][k] = ans;
     }
 }
